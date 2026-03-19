@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Plane, MapPin, Calendar, Clock, IndianRupee } from "lucide-react";
 import AffiliateDisclosure from "@/components/affiliate/AffiliateDisclosure";
+import TripShareButtons from "@/components/TripShareButtons";
 
 interface TripData {
   id: string;
@@ -118,7 +119,13 @@ export default async function TripPage({ params }: { params: Promise<{ slug: str
           </div>
         )}
 
-        <div className="mt-6 flex items-center justify-between text-xs text-text-muted">
+        {/* Share buttons */}
+        <div className="mt-6 border-t border-border pt-4">
+          <p className="mb-2 text-xs font-semibold text-text-secondary">Share this trip</p>
+          <TripShareButtons destination={destinations} slug={slug} />
+        </div>
+
+        <div className="mt-4 flex items-center justify-between text-xs text-text-muted">
           <span className="flex items-center gap-1">
             <Clock size={12} />
             {trip.viewCount} views

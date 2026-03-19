@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plane, LayoutDashboard, Menu, X } from "lucide-react";
+import { Plane, LayoutDashboard, BookOpen, Menu, X, Info } from "lucide-react";
 import { useState } from "react";
 import SafarLogo from "@/components/SafarLogo";
 import { useAuth, getInitials } from "@/lib/auth";
@@ -17,6 +17,8 @@ function NavBar() {
   const navLinks = [
     { href: "/", label: "Plan Trip", icon: Plane },
     ...(user ? [{ href: "/dashboard", label: "My Trips", icon: LayoutDashboard }] : []),
+    { href: "/blog", label: "Blog", icon: BookOpen },
+    { href: "/about", label: "About", icon: Info },
   ];
 
   return (
@@ -130,9 +132,13 @@ function FooterBar() {
           <p className="text-xs text-text-muted">
             &copy; {new Date().getFullYear()} Safar AI. All rights reserved.
           </p>
-          <div className="flex gap-4 text-xs text-text-secondary">
+          <div className="flex flex-wrap gap-4 text-xs text-text-secondary">
             <Link href="/" className="hover:text-text-primary">Home</Link>
             <Link href="/plan" className="hover:text-text-primary">Plan</Link>
+            <Link href="/blog" className="hover:text-text-primary">Blog</Link>
+            <Link href="/about" className="hover:text-text-primary">About</Link>
+            <Link href="/privacy" className="hover:text-text-primary">Privacy</Link>
+            <Link href="/terms" className="hover:text-text-primary">Terms</Link>
           </div>
         </div>
       </div>

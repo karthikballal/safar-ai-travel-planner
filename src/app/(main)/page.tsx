@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Plane, Shield, Sparkles, Globe, ArrowRight, MapPin, Star, Clock, IndianRupee } from "lucide-react";
 import SmartSearchBar from "@/components/SmartSearchBar";
+import SocialProof from "@/components/SocialProof";
 
 const POPULAR_DESTINATIONS = [
   { name: "Goa", tagline: "Beaches & nightlife", image: "🏖️", slug: "goa", price: "₹8,500" },
@@ -82,6 +83,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Social proof stats */}
+      <SocialProof />
 
       {/* Popular Destinations */}
       <section className="mx-auto max-w-6xl px-4 py-10 sm:py-14">

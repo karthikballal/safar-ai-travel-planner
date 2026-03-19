@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { getAllSeoPages } from "@/lib/seoPages";
+import { blogPosts } from "@/data/blogPosts";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
@@ -11,6 +12,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: page.pageType === "trip-cost" ? 0.7 : 0.8,
   }));
 
+  const blogEntries = blogPosts.map((post) => ({
+    url: `${runtimeConfig.siteUrl}/blog/${post.slug}`,
+    lastModified: new Date(post.publishedAt),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+
   return [
     {
       url: runtimeConfig.siteUrl,
@@ -18,6 +26,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: `${runtimeConfig.siteUrl}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${runtimeConfig.siteUrl}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    ...blogEntries,
     ...seoEntries,
   ];
 }

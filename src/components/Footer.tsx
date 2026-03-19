@@ -476,12 +476,11 @@ export default function Footer() {
 
               <div className="space-y-2.5">
                 <p className="text-[10px] font-semibold tracking-widest uppercase text-text-muted">
-                  Platform
+                  Company
                 </p>
-                <p className="text-xs text-text-secondary">AI Trip Planner</p>
-                <p className="text-xs text-text-secondary">Price Calendar</p>
-                <p className="text-xs text-text-secondary">Visa Intelligence</p>
-                <p className="text-xs text-text-secondary">PDF Itineraries</p>
+                <a href="/about" className="block text-xs text-text-secondary hover:text-text-primary transition-colors">About Us</a>
+                <a href="/privacy" className="block text-xs text-text-secondary hover:text-text-primary transition-colors">Privacy Policy</a>
+                <a href="/terms" className="block text-xs text-text-secondary hover:text-text-primary transition-colors">Terms of Service</a>
               </div>
             </div>
           </div>

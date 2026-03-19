@@ -16,6 +16,7 @@ import {
   ArrowRight,
   LogOut,
   Home,
+  Share2,
 } from "lucide-react";
 import InputEngine from "@/components/InputEngine";
 import type { TravelInput } from "@/components/InputEngine";
@@ -40,6 +41,8 @@ import SummaryCheckoutPage from "@/components/SummaryCheckoutPage";
 import ArrivalCityPicker from "@/components/ArrivalCityPicker";
 import CountryCityPicker from "@/components/CountryCityPicker";
 import RegionCountryPicker from "@/components/RegionCountryPicker";
+import ShareTripCard from "@/components/ShareTripCard";
+import TripCostSummary from "@/components/TripCostSummary";
 import { useAuth, getInitials } from "@/lib/auth";
 import { trackClientEvent } from "@/lib/analytics";
 import { buildBookingSearchUrl, buildMapsUrl } from "@/lib/affiliate";
@@ -85,6 +88,7 @@ export default function ClientAppFlow() {
   } = useTripStore();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
   const selectedFlightTotal = sumVerifiedFlightPrices([selectedOutbound, selectedInbound]);
   const selectedFlightTotalLabel = getFlightTotalLabel([selectedOutbound, selectedInbound], "Live fare on partner");
 
@@ -1388,7 +1392,51 @@ export default function ClientAppFlow() {
                   duration={userInput.duration || 7}
                 />
               )}
+
+              {/* ── Trip Cost Summary ──────────────────────────────────── */}
+              {userInput && (
+                <TripCostSummary
+                  destination={userInput.destination}
+                  totalBudget={userInput.budget || 300000}
+                  travelers={(userInput.adults || 2) + (userInput.children || 0)}
+                  duration={userInput.duration || 7}
+                  flightCost={userInput.tripType !== "domestic" && selectedOutbound && selectedInbound ? selectedFlightTotal : 0}
+                  hotelCost={selectedHotels.reduce((s, h) => s + (h?.totalPrice ?? 0), 0)}
+                  foodCost={Math.round(
+                    selectedActivities.filter((a) => a.category === "food").reduce((s, a) => s + a.price, 0) ||
+                    (userInput.budget || 300000) * 0.15
+                  )}
+                  activityCost={selectedActivities.filter((a) => a.category !== "food").reduce((s, a) => s + a.price, 0)}
+                  transportCost={aiRoutePlan?.cities.reduce((s, c) => s + (c.transportFromPrev?.estimatedCost || 0), 0) || 0}
+                  onShareClick={() => setShowShareCard(true)}
+                />
+              )}
             </div>
+
+            {/* Floating Share Button */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1, type: "spring" }}
+              onClick={() => setShowShareCard(true)}
+              className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 transition-all hover:scale-110 hover:shadow-xl hover:shadow-indigo-500/40 active:scale-95 sm:right-8"
+            >
+              <Share2 className="h-5 w-5" />
+            </motion.button>
+
+            {/* Share Trip Card Modal */}
+            <ShareTripCard
+              isOpen={showShareCard}
+              onClose={() => setShowShareCard(false)}
+              destination={userInput?.destination || ""}
+              origin={userInput?.origin || ""}
+              duration={userInput?.duration || 7}
+              adults={userInput?.adults || 2}
+              children={userInput?.children || 0}
+              budget={userInput?.budget || 300000}
+              travelStyle={userInput?.travelStyle}
+              highlights={selectedActivities.slice(0, 4).map((a) => a.title)}
+            />
 
             {/* Sticky Bottom — Download PDF */}
             <StickyCart
