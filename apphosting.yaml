@@ -1,0 +1,11 @@
+runConfig:
+  runtime: nodejs20
+  concurrency: 80
+
+env:
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+  - variable: SERPAPI_KEY
+    secret: SERPAPI_KEY
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
