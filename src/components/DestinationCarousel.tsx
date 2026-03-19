@@ -72,7 +72,7 @@ export default function DestinationCarousel({ onSelect }: Props) {
       {/* Section label */}
       <div className="mb-4 flex items-center justify-between px-1">
         <div>
-          <h3 className="text-base font-bold text-text-primary">
+          <h3 className="text-base font-extrabold text-text-primary">
             Not sure where to go?
           </h3>
           <p className="text-xs text-text-muted">
@@ -84,9 +84,9 @@ export default function DestinationCarousel({ onSelect }: Props) {
             whileTap={{ scale: 0.9 }}
             onClick={() => scroll("left")}
             disabled={!canScrollLeft}
-            className={`flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white transition-all ${
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white transition-all ${
               canScrollLeft
-                ? "text-text-secondary hover:bg-gray-100"
+                ? "text-text-secondary hover:bg-gray-50"
                 : "text-gray-300 cursor-default"
             }`}
           >
@@ -96,9 +96,9 @@ export default function DestinationCarousel({ onSelect }: Props) {
             whileTap={{ scale: 0.9 }}
             onClick={() => scroll("right")}
             disabled={!canScrollRight}
-            className={`flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white transition-all ${
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-white transition-all ${
               canScrollRight
-                ? "text-text-secondary hover:bg-gray-100"
+                ? "text-text-secondary hover:bg-gray-50"
                 : "text-gray-300 cursor-default"
             }`}
           >
@@ -107,7 +107,7 @@ export default function DestinationCarousel({ onSelect }: Props) {
         </div>
       </div>
 
-      {/* Horizontal scroll cards */}
+      {/* Horizontal scroll cards — PYT style with image overlay */}
       <div
         ref={scrollRef}
         className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2"
@@ -132,38 +132,37 @@ function DestinationCard({
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={() => onSelect(dest.name)}
-      className="group relative flex w-65 shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-border bg-white transition-all hover:border-gray-300 hover:shadow-md"
+      className="dest-card group w-60 shrink-0 snap-start"
     >
       {/* Image */}
-      <div className="relative h-36 overflow-hidden">
-        <img
-          src={dest.image}
-          alt={dest.name}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-white/90 px-2.5 py-1 shadow-sm">
-          <span className="text-sm">{dest.flag}</span>
-          <span className="text-[11px] font-semibold text-text-primary">
-            {dest.country}
-          </span>
-        </div>
+      <img
+        src={dest.image}
+        alt={dest.name}
+        loading="lazy"
+      />
+      <div className="overlay" />
+
+      {/* Country badge */}
+      <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 shadow-sm">
+        <span className="text-sm">{dest.flag}</span>
+        <span className="text-[11px] font-bold text-text-primary">
+          {dest.country}
+        </span>
       </div>
 
-      {/* Info */}
-      <div className="flex flex-1 flex-col p-4">
-        <h4 className="text-base font-bold text-text-primary">{dest.name}</h4>
-        <p className="mb-2 text-[11px] text-text-muted">{dest.tagline}</p>
+      {/* Content overlay */}
+      <div className="absolute bottom-0 left-0 right-0 p-4">
+        <h4 className="text-lg font-bold text-white">{dest.name}</h4>
+        <p className="text-[11px] text-white/70">{dest.tagline}</p>
 
-        {/* Cities covered */}
+        {/* Cities */}
         {dest.cities && dest.cities.length > 0 && (
-          <p className="mb-2 text-[10px] text-primary-500">
+          <p className="mt-1 text-[10px] text-white/50">
             {dest.cities.join(" · ")}
           </p>
         )}
 
-        <div className="mt-auto flex items-center gap-3 text-[11px] text-text-muted">
+        <div className="mt-2 flex items-center gap-3 text-[11px] text-white/70">
           <span className="flex items-center gap-1">
             <Wallet className="h-3 w-3" />
             {dest.budget}

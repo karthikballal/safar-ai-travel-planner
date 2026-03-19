@@ -1,27 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* ─── Typography — Manrope (PYT-inspired) + Inter fallback ────────── */
+  --font-sans: "Manrope", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* Safar AI Design Tokens */
-  --color-primary-50: #f0fdfa;
-  --color-primary-100: #ccfbf1;
-  --color-primary-200: #99f6e4;
-  --color-primary-500: #14b8a6;
-  --color-primary-600: #0d9488;
-  --color-primary-700: #0f766e;
-  --color-primary-900: #134e4a;
+  /* ─── PickYourTrail-inspired Color Tokens ──────────────────────────── */
+  /* Primary Green — CTA, active states, brand identity */
+  --color-primary-50: #e6f9f1;
+  --color-primary-100: #b3efd9;
+  --color-primary-200: #80e5c1;
+  --color-primary-500: #00C684;
+  --color-primary-600: #00a86f;
+  --color-primary-700: #009E6A;
+  --color-primary-900: #006644;
 
+  /* Accent — Urgency, badges, highlights */
   --color-accent-500: #f97316;
   --color-accent-600: #ea580c;
 
+  /* Surfaces */
   --color-surface: #ffffff;
-  --color-surface-elevated: #fafafa;
-  --color-border: #e4e4e7;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #71717a;
-  --color-text-muted: #a1a1aa;
+  --color-surface-elevated: #f7f7f7;
+  --color-border: #e5e7eb;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
 }
 
 * {
@@ -34,9 +38,9 @@ html {
 }
 
 body {
-  font-family: var(--font-sans, Inter, sans-serif);
-  background: #fafaf9;
-  color: #18181b;
+  font-family: var(--font-sans, Manrope, Inter, sans-serif);
+  background: #ffffff;
+  color: #1a1a1a;
   overflow-x: hidden;
 }
 
@@ -44,15 +48,15 @@ body {
 
 .card {
   background: white;
-  border: 1px solid #e4e4e7;
-  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  border-color: #d4d4d8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  border-color: #d1d5db;
 }
 
 /* Legacy glass classes — map to light card style for backward compat */
@@ -60,64 +64,120 @@ body {
 .glass-strong,
 .glass-card {
   background: white;
-  border: 1px solid #e4e4e7;
-  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: all 0.2s ease;
 }
 
 .glass-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: #d4d4d8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  border-color: #d1d5db;
 }
 
-/* ─── Buttons ──────────────────────────────────────────────────────────── */
+/* ─── Buttons — PickYourTrail green CTA ──────────────────────────────── */
 
 .btn-primary {
-  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+  background: #00C684;
   color: white;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 12px;
-  padding: 12px 24px;
+  padding: 12px 28px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 198, 132, 0.25);
+  letter-spacing: -0.01em;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.35);
+  background: #00a86f;
+  box-shadow: 0 4px 16px rgba(0, 198, 132, 0.35);
   transform: translateY(-1px);
 }
 
 .btn-secondary {
   background: white;
-  color: #0d9488;
+  color: #00C684;
   font-weight: 600;
-  border: 2px solid #0d9488;
+  border: 1.5px solid #00C684;
   border-radius: 12px;
-  padding: 12px 24px;
+  padding: 12px 28px;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
-  background: #f0fdfa;
+  background: #e6f9f1;
 }
 
 /* Legacy glow-btn — map to primary */
 .glow-btn {
   position: relative;
-  background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+  background: #00C684;
   color: white;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 198, 132, 0.25);
 }
 
 .glow-btn:hover {
-  box-shadow: 0 4px 16px rgba(13, 148, 136, 0.35);
+  background: #00a86f;
+  box-shadow: 0 4px 16px rgba(0, 198, 132, 0.35);
 }
 
 .glow-btn::before {
   display: none;
 }
+
+/* ─── Destination Cards (PYT-style full-bleed) ───────────────────────── */
+
+.dest-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  aspect-ratio: 270 / 370;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dest-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.dest-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.dest-card:hover img {
+  transform: scale(1.08);
+}
+
+.dest-card .overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.1) 50%, transparent 100%);
+}
+
+/* ─── Badge System (PYT color-coded tags) ────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-trending { background: #FFF3E0; color: #E65100; }
+.badge-popular { background: #E8F5E9; color: #2E7D32; }
+.badge-honeymoon { background: #FCE4EC; color: #C62828; }
+.badge-budget { background: #E3F2FD; color: #1565C0; }
+.badge-season { background: #F3E5F5; color: #7B1FA2; }
+.badge-new { background: #E0F7FA; color: #00695C; }
 
 /* ─── Ambient background (light version) ──────────────────────────────── */
 
@@ -127,7 +187,7 @@ body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(135deg, #f0fdfa 0%, #fafaf9 50%, #fff7ed 100%);
+  background: linear-gradient(135deg, #e6f9f1 0%, #ffffff 50%, #fff7ed 100%);
 }
 
 .ambient-bg::before,
@@ -167,7 +227,7 @@ body {
   scrollbar-width: none;
 }
 
-/* ─── Timeline ─────────────────────────────────────────────────────────── */
+/* ─── Timeline (PYT-style accordion with vertical line) ───────────────── */
 
 .timeline-line {
   position: absolute;
@@ -175,7 +235,28 @@ body {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, #14b8a6, #0d9488, #e4e4e7);
+  background: linear-gradient(to bottom, #00C684, #009E6A, #e5e7eb);
+}
+
+/* ─── PYT-style sticky bottom bar (mobile) ────────────────────────────── */
+
+.sticky-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+
+@media (min-width: 1024px) {
+  .sticky-bottom-bar {
+    display: none;
+  }
 }
 
 /* ─── Range input ──────────────────────────────────────────────────────── */
@@ -184,7 +265,7 @@ input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   height: 6px;
-  background: #e4e4e7;
+  background: #e5e7eb;
   border-radius: 3px;
   outline: none;
 }
@@ -195,7 +276,89 @@ input[type="range"]::-webkit-slider-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  background: #00C684;
   cursor: pointer;
-  box-shadow: 0 0 8px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 0 8px rgba(0, 198, 132, 0.4);
+}
+
+/* ─── PYT-style progress steps ─────────────────────────────────────────── */
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+.step-dot-active {
+  background: #00C684;
+  color: white;
+  box-shadow: 0 0 0 4px rgba(0, 198, 132, 0.2);
+}
+
+.step-dot-completed {
+  background: #00C684;
+  color: white;
+}
+
+.step-dot-pending {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+
+.step-line {
+  height: 2px;
+  flex: 1;
+  transition: background 0.3s ease;
+}
+
+.step-line-active { background: #00C684; }
+.step-line-pending { background: #e5e7eb; }
+
+/* ─── Pricing (PYT-style) ─────────────────────────────────────────────── */
+
+.price-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: #1a1a1a;
+}
+
+.price-prefix {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+}
+
+/* ─── Hero gradient overlay ────────────────────────────────────────────── */
+
+.hero-gradient {
+  background: linear-gradient(135deg, #e6f9f1 0%, #ffffff 40%, #fef3c7 100%);
+}
+
+/* ─── Animations ───────────────────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease forwards;
 }
