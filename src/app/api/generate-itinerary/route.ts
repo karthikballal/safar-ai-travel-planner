@@ -146,7 +146,7 @@ CRITICAL INTELLIGENCE RULES:
 
         // Use Gemini 2.0 Flash (free tier, faster) instead of 1.5 Pro
         const { object } = await generateObject({
-            model: google("gemini-2.0-flash"),
+            model: google("gemini-2.5-flash"),
             schema: itineraryOutputSchema,
             prompt,
             temperature: 0.3,
