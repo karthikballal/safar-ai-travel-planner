@@ -11,6 +11,8 @@ export const runtimeConfig = {
   flightDataApiKey: process.env.FLIGHTDATAAPI_KEY || process.env.FLIGHT_DATA_API_KEY || "",
   kiwiTequilaApiKey: process.env.KIWI_TEQUILA_API_KEY || "",
   serpApiKey: process.env.SERPAPI_KEY || "",
+  amadeusApiKey: process.env.AMADEUS_API_KEY || "",
+  amadeusApiSecret: process.env.AMADEUS_API_SECRET || "",
   bookingAffiliateId: process.env.BOOKING_AFFILIATE_ID || "",
   travelpayoutsToken: process.env.TRAVELPAYOUTS_TOKEN || "",
   travelpayoutsMarker: process.env.TRAVELPAYOUTS_MARKER || "",
@@ -32,6 +34,10 @@ export function hasKiwiApi(): boolean {
 
 export function hasSerpApi(): boolean {
   return runtimeConfig.serpApiKey.length > 0;
+}
+
+export function hasAmadeusApi(): boolean {
+  return runtimeConfig.amadeusApiKey.length > 0 && runtimeConfig.amadeusApiSecret.length > 0;
 }
 
 export function hasBookingAffiliate(): boolean {

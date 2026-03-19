@@ -213,7 +213,7 @@ export default function HotelSelectionPage({
         </p>
         {source && (
           <span className="mt-2 inline-block rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[10px] font-semibold text-emerald-600">
-            Source: {source === "google-places" ? "Google Places + Booking.com" : "Booking.com affiliate search"}
+            Source: {source === "google-places" ? "Google Places + Booking.com" : "AI-curated hotels • Book on Booking.com for exact rates"}
           </span>
         )}
       </div>

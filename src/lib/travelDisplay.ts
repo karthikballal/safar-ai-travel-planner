@@ -80,11 +80,13 @@ function getFlightPricingSummary(flights: Array<Flight | null | undefined>) {
 }
 
 export function getFlightPriceLabel(flight: Flight | null | undefined): string {
-  if (!flight) return "Live fare on partner";
+  if (!flight) return "Compare prices →";
+  const price = flight.price;
+  const currency = flight.priceCurrency || "INR";
   if (flight.priceLabel) return flight.priceLabel;
-  return hasVerifiedFlightPrice(flight)
-    ? formatCurrency(flight.price, flight.priceCurrency || "INR")
-    : "Live fare on partner";
+  if (flight.priceVerified !== false && price > 0) return formatCurrency(price, currency);
+  if (price > 0) return `~${formatCurrency(price, currency)} est.`;
+  return "Compare prices →";
 }
 
 export function hasCompositeFlightPricingConflict(
@@ -95,7 +97,7 @@ export function hasCompositeFlightPricingConflict(
 
 export function getFlightTotalLabel(
   flights: Array<Flight | null | undefined>,
-  fallback = "Live fares on partner"
+  fallback = "Compare on booking partners"
 ): string {
   const summary = getFlightPricingSummary(flights);
   if (!summary.hasVerifiedPrice) return fallback;
@@ -107,14 +109,19 @@ export function getFlightTotalLabel(
 }
 
 export function getHotelNightlyLabel(hotel: Hotel | null | undefined): string {
-  if (!hotel) return "Check live rates";
+  if (!hotel) return "View on Booking.com";
+  if (hasVerifiedHotelPrice(hotel)) return `${formatCurrency(hotel.pricePerNight)}/night`;
+  if (hotel.pricePerNight > 0) return `~${formatCurrency(hotel.pricePerNight)}/night est.`;
   if (hotel.priceLabel) return hotel.priceLabel;
-  return hasVerifiedHotelPrice(hotel) ? `${formatCurrency(hotel.pricePerNight)}/night` : "Check live rates";
+  return "View on Booking.com";
 }
 
 export function getHotelTotalLabel(hotel: Hotel | null | undefined): string {
-  if (!hotel) return "Check live rates";
-  return hasVerifiedHotelPrice(hotel) ? formatCurrency(hotel.totalPrice) : hotel.priceLabel || "Check live rates";
+  if (!hotel) return "View on Booking.com";
+  if (hasVerifiedHotelPrice(hotel)) return formatCurrency(hotel.totalPrice);
+  if (hotel.totalPrice > 0) return `~${formatCurrency(hotel.totalPrice)} est.`;
+  if (hotel.priceLabel) return hotel.priceLabel;
+  return "View on Booking.com";
 }
 
 export function sumVerifiedFlightPrices(flights: Array<Flight | null | undefined>): number {
@@ -125,7 +132,12 @@ export function sumVerifiedFlightPrices(flights: Array<Flight | null | undefined
 }
 
 export function sumVerifiedHotelPrices(hotels: Array<Hotel | null | undefined>): number {
-  return hotels.reduce((sum, hotel) => sum + (hasVerifiedHotelPrice(hotel) ? hotel!.totalPrice : 0), 0);
+  return hotels.reduce((sum, hotel) => {
+    if (!hotel) return sum;
+    // Include both verified and estimated prices for total display
+    if (hotel.totalPrice > 0) return sum + hotel.totalPrice;
+    return sum;
+  }, 0);
 }
 
 export function hasPartnerOnlyPricing(
@@ -138,14 +150,18 @@ export function hasPartnerOnlyPricing(
 export function getFlightSourceLabel(source?: string): string {
   switch (source) {
     case "flightdataapi":
-      return "FlightDataAPI (live fares)";
+      return "Live fares from 400+ airlines";
     case "kiwi":
-      return "Kiwi Tequila (live fares)";
+      return "Live fares via Kiwi.com";
     case "serpapi":
-      return "Google Flights";
+      return "Live prices from Google Flights";
+    case "amadeus":
+      return "Live prices from Amadeus GDS";
+    case "ai-estimated":
+      return "AI-estimated prices • Book on partner for exact fare";
     case "partner-redirect":
-      return "Partner redirects";
+      return "Compare prices on booking partners";
     default:
-      return "Flight estimates";
+      return "Estimated prices";
   }
 }

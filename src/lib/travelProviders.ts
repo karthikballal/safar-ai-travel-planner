@@ -9,6 +9,15 @@ import {
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { withRedisCache } from "@/lib/cache/redis";
 import { resolveIATA } from "@/lib/amadeus";
+import { searchAmadeusFlights, isAmadeusConfigured } from "@/lib/amadeusClient";
+import {
+  estimateFlightPrices,
+  estimateHotelPrices,
+  estimateActivityPrices,
+  type EstimatedFlight,
+  type EstimatedHotel,
+  type EstimatedActivity,
+} from "@/lib/aiPriceEstimator";
 
 const airlineLogos: Record<string, string> = {
   "Air India": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Air_India_Logo.svg/200px-Air_India_Logo.svg.png",
@@ -517,6 +526,142 @@ async function searchSerpFlights(params: {
   };
 }
 
+// ─── Map Amadeus results to Flight type ──────────────────────────────────
+
+function mapAmadeusToFlight(
+  parsed: import("@/lib/amadeusClient").ParsedFlight,
+  direction: "outbound" | "inbound",
+  originCode: string,
+  destinationCode: string
+): Flight {
+  return {
+    id: parsed.id,
+    airline: parsed.airline,
+    airlineLogo: getAirlineLogo(parsed.airline),
+    flightNumber: parsed.flightNumber,
+    departure: {
+      city: parsed.departure.code,
+      code: parsed.departure.code,
+      time: parsed.departure.time,
+      date: parsed.departure.date,
+    },
+    arrival: {
+      city: parsed.arrival.code,
+      code: parsed.arrival.code,
+      time: parsed.arrival.time,
+      date: parsed.arrival.date,
+    },
+    duration: parsed.duration,
+    layover: parsed.layoverCity
+      ? { city: parsed.layoverCity, duration: `${parsed.stops} stop${parsed.stops > 1 ? "s" : ""}` }
+      : undefined,
+    class: parsed.cabin,
+    price: parsed.pricePerPerson,
+    priceVerified: true,
+    priceCurrency: parsed.currency,
+    priceLabel: `${formatProviderPrice(parsed.pricePerPerson, parsed.currency)} per person`,
+    bookingUrl: buildSkyscannerSearchUrl({
+      originCode: direction === "outbound" ? originCode : destinationCode,
+      destinationCode: direction === "outbound" ? destinationCode : originCode,
+    }),
+  };
+}
+
+// ─── Map AI-estimated flights to Flight type ─────────────────────────────
+
+function mapEstimatedFlight(
+  est: EstimatedFlight,
+  direction: "outbound" | "inbound",
+  index: number,
+  originCode: string,
+  destinationCode: string,
+  date: string
+): Flight {
+  const fromCode = direction === "outbound" ? originCode : destinationCode;
+  const toCode = direction === "outbound" ? destinationCode : originCode;
+
+  return {
+    id: `est_${direction}_${index}`,
+    airline: est.airline,
+    airlineLogo: getAirlineLogo(est.airline),
+    flightNumber: est.flightNumber,
+    departure: {
+      city: fromCode,
+      code: fromCode,
+      time: est.departureTime,
+      date: formatDate(date),
+    },
+    arrival: {
+      city: toCode,
+      code: toCode,
+      time: est.arrivalTime,
+      date: formatDate(date),
+    },
+    duration: formatDuration(est.durationMinutes),
+    layover: est.stops > 0 && est.layoverCity
+      ? { city: est.layoverCity, duration: `${est.stops} stop${est.stops > 1 ? "s" : ""}` }
+      : undefined,
+    class: est.cabin,
+    price: est.priceINR,
+    priceVerified: false,
+    priceCurrency: "INR",
+    priceLabel: `~${formatProviderPrice(est.priceINR, "INR")} est.`,
+    bookingUrl: buildSkyscannerSearchUrl({ originCode: fromCode, destinationCode: toCode }),
+  };
+}
+
+// ─── Map AI-estimated hotels to Hotel type ───────────────────────────────
+
+function mapEstimatedHotel(
+  est: EstimatedHotel,
+  cityEntry: { city: string; checkIn: string; checkOut: string },
+  nights: number,
+  index: number
+): Hotel {
+  return {
+    id: `est_hotel_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}_${index}`,
+    name: est.name,
+    image: `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80`,
+    stars: est.category === "luxury" ? 5 : est.category === "premium" ? 4 : est.category === "mid-range" ? 3 : 2,
+    rating: est.rating,
+    reviews: est.reviewCount,
+    address: `${est.neighborhood}, ${cityEntry.city}`,
+    amenities: est.amenities,
+    checkIn: formatDate(cityEntry.checkIn),
+    checkOut: formatDate(cityEntry.checkOut),
+    nights,
+    pricePerNight: est.pricePerNightINR,
+    totalPrice: est.pricePerNightINR * nights,
+    priceVerified: false,
+    priceLabel: `~${formatProviderPrice(est.pricePerNightINR, "INR")}/night est.`,
+    bookingUrl: buildBookingSearchUrl({ hotelName: est.name, city: cityEntry.city }),
+  };
+}
+
+// ─── Map AI-estimated activities to ActivityOption type ───────────────────
+
+function mapEstimatedActivity(
+  est: EstimatedActivity,
+  city: string,
+  index: number
+): ActivityOption {
+  return {
+    id: `est_activity_${city.toLowerCase().replace(/\s+/g, "_")}_${index}`,
+    title: est.name,
+    description: est.description,
+    duration: `${est.durationHours} hours`,
+    price: est.priceINR,
+    currency: "INR",
+    rating: est.rating,
+    reviews: est.reviewCount,
+    category: est.category,
+    bookingUrl: buildMapsUrl(`${est.name} ${city}`),
+    googleMapsUrl: buildMapsUrl(`${est.name} ${city}`),
+    priceVerified: false,
+    source: "gemini-ai",
+  };
+}
+
 function buildPartnerFallbackFlights(origin: string, destination: string, originCode: string, destinationCode: string, departDate: string, returnDate: string): { outbound: Flight[]; inbound: Flight[] } {
   const outboundTarget = buildSkyscannerSearchUrl({ originCode, destinationCode });
   const inboundTarget = buildGoogleFlightsUrl({ originCode: destinationCode, destinationCode: originCode });
@@ -674,6 +819,58 @@ export async function searchFlights(params: {
       console.error("[Travel Providers] SerpAPI flights error:", error);
     }
 
+    // Try Amadeus Self-Service API (free 2,000 req/month)
+    try {
+      if (isAmadeusConfigured()) {
+        const amadeusResult = await searchAmadeusFlights({
+          originCode,
+          destinationCode,
+          departDate: params.departDate,
+          returnDate: params.returnDate,
+          adults: params.adults,
+        });
+
+        if (amadeusResult) {
+          return {
+            outbound: amadeusResult.outbound.map((f) => mapAmadeusToFlight(f, "outbound", originCode, destinationCode)),
+            inbound: amadeusResult.inbound.map((f) => mapAmadeusToFlight(f, "inbound", originCode, destinationCode)),
+            source: "amadeus" as const,
+            searchedAt: new Date().toISOString(),
+          };
+        }
+      }
+    } catch (error) {
+      console.error("[Travel Providers] Amadeus flights error:", error);
+    }
+
+    // AI-powered price estimation using Gemini (FREE — always available)
+    try {
+      const estimated = await estimateFlightPrices({
+        origin: params.origin,
+        originCode,
+        destination: params.destination,
+        destinationCode,
+        departDate: params.departDate,
+        returnDate: params.returnDate,
+        adults: params.adults,
+      });
+
+      if (estimated) {
+        return {
+          outbound: estimated.outbound.map((est, i) =>
+            mapEstimatedFlight(est, "outbound", i, originCode, destinationCode, params.departDate)
+          ),
+          inbound: estimated.inbound.map((est, i) =>
+            mapEstimatedFlight(est, "inbound", i, originCode, destinationCode, params.returnDate)
+          ),
+          source: "ai-estimated" as const,
+          searchedAt: new Date().toISOString(),
+        };
+      }
+    } catch (error) {
+      console.error("[Travel Providers] AI flight estimation error:", error);
+    }
+
     return {
       ...buildPartnerFallbackFlights(
         params.origin,
@@ -742,6 +939,27 @@ export async function searchHotels(params: {
         }
       } catch (error) {
         console.error(`[Travel Providers] Google Places hotels error for ${cityEntry.city}:`, error);
+      }
+
+      // AI-powered hotel estimation fallback
+      try {
+        const estimatedHotels = await estimateHotelPrices({
+          city: cityEntry.city,
+          checkIn: cityEntry.checkIn,
+          checkOut: cityEntry.checkOut,
+          nights,
+        });
+
+        if (estimatedHotels && estimatedHotels.length > 0) {
+          results.push({
+            city: cityEntry.city,
+            source: "booking-affiliate" as const,
+            hotels: estimatedHotels.map((est, idx) => mapEstimatedHotel(est, cityEntry, nights, idx)),
+          });
+          continue;
+        }
+      } catch (estError) {
+        console.error(`[Travel Providers] AI hotel estimation error for ${cityEntry.city}:`, estError);
       }
 
       results.push({
@@ -820,47 +1038,79 @@ export async function searchActivities(params: {
 
       const places = dedupeById(placeGroups.flat()).slice(0, Math.max(6, cityEntry.days * 3));
 
-      const activities: ActivityOption[] =
-        places.length > 0
-          ? places.map((place, index) => {
-              const category = getActivityCategory(place);
-              const title = place.displayName?.text || `${cityEntry.city} highlight`;
-              return {
-                id: `activity_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}_${place.id || index}`,
-                title,
-                description:
-                  place.editorialSummary?.text ||
-                  `${title} in ${cityEntry.city}. Use Google Maps for live timings, ticketing, and visitor updates.`,
-                duration: getActivityDuration(category),
-                price: 0,
-                currency: "INR",
-                rating: place.rating || 0,
-                reviews: place.userRatingCount || 0,
-                image: buildPlacePhotoUrl(place.photos?.[0]?.name),
-                category,
-                bookingUrl: place.websiteUri || place.googleMapsUri || buildMapsUrl(`${title} ${cityEntry.city}`),
-                googleMapsUrl: place.googleMapsUri || buildMapsUrl(`${title} ${cityEntry.city}`),
-                priceVerified: false,
-                source: "google-places",
-              };
-            })
-          : [
-              {
-                id: `maps_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}`,
-                title: `${cityEntry.city} attractions on Google Maps`,
-                description: `Use Google Maps to browse the most relevant attractions, reviews, and opening hours in ${cityEntry.city}.`,
-                duration: "Flexible",
-                price: 0,
-                currency: "INR",
-                rating: 0,
-                reviews: 0,
-                category: "attraction",
-                bookingUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
-                googleMapsUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
-                priceVerified: false,
-                source: "google-places",
-              },
-            ];
+      let activities: ActivityOption[];
+
+      if (places.length > 0) {
+        activities = places.map((place, index) => {
+          const category = getActivityCategory(place);
+          const title = place.displayName?.text || `${cityEntry.city} highlight`;
+          return {
+            id: `activity_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}_${place.id || index}`,
+            title,
+            description:
+              place.editorialSummary?.text ||
+              `${title} in ${cityEntry.city}. Use Google Maps for live timings, ticketing, and visitor updates.`,
+            duration: getActivityDuration(category),
+            price: 0,
+            currency: "INR",
+            rating: place.rating || 0,
+            reviews: place.userRatingCount || 0,
+            image: buildPlacePhotoUrl(place.photos?.[0]?.name),
+            category,
+            bookingUrl: place.websiteUri || place.googleMapsUri || buildMapsUrl(`${title} ${cityEntry.city}`),
+            googleMapsUrl: place.googleMapsUri || buildMapsUrl(`${title} ${cityEntry.city}`),
+            priceVerified: false,
+            source: "google-places",
+          };
+        });
+      } else {
+        // AI-powered activity estimation fallback
+        try {
+          const estimatedActivities = await estimateActivityPrices({
+            city: cityEntry.city,
+            days: cityEntry.days,
+          });
+
+          if (estimatedActivities && estimatedActivities.length > 0) {
+            activities = estimatedActivities.map((est, idx) =>
+              mapEstimatedActivity(est, cityEntry.city, idx)
+            );
+          } else {
+            activities = [{
+              id: `maps_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}`,
+              title: `${cityEntry.city} attractions on Google Maps`,
+              description: `Use Google Maps to browse the most relevant attractions, reviews, and opening hours in ${cityEntry.city}.`,
+              duration: "Flexible",
+              price: 0,
+              currency: "INR",
+              rating: 0,
+              reviews: 0,
+              category: "attraction",
+              bookingUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
+              googleMapsUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
+              priceVerified: false,
+              source: "google-places",
+            }];
+          }
+        } catch (estError) {
+          console.error(`[Travel Providers] AI activity estimation error for ${cityEntry.city}:`, estError);
+          activities = [{
+            id: `maps_${cityEntry.city.toLowerCase().replace(/\s+/g, "_")}`,
+            title: `${cityEntry.city} attractions on Google Maps`,
+            description: `Use Google Maps to browse the most relevant attractions, reviews, and opening hours in ${cityEntry.city}.`,
+            duration: "Flexible",
+            price: 0,
+            currency: "INR",
+            rating: 0,
+            reviews: 0,
+            category: "attraction",
+            bookingUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
+            googleMapsUrl: buildMapsUrl(`top attractions in ${cityEntry.city}`),
+            priceVerified: false,
+            source: "google-places",
+          }];
+        }
+      }
 
       results.push({ city: cityEntry.city, activities });
     }
