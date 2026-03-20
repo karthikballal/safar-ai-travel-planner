@@ -250,68 +250,8 @@ export default function ClientAppFlow() {
         .toISOString()
         .split("T")[0];
 
-      // Step 3: For domestic trips, skip flights → go directly to hotels
-      if (isDomestic) {
-        setHotelLoading(true);
-        setAppState("hotel-selection");
-
-        // Fetch hotels
-        const cities = plan.cities.map((c) => {
-          const startDateObj = new Date(userInput.startDate);
-          let dayOffset = 0;
-          for (const prev of plan.cities) {
-            if (prev.city === c.city) break;
-            dayOffset += prev.days;
-          }
-          const checkIn = new Date(startDateObj.getTime() + dayOffset * 86400000).toISOString().split("T")[0];
-          const checkOut = new Date(startDateObj.getTime() + (dayOffset + c.days) * 86400000).toISOString().split("T")[0];
-          return { city: c.city, checkIn, checkOut };
-        });
-
-        const hotelResponse = await fetch("/api/hotels/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cities,
-            adults: userInput.adults,
-            rooms: userInput.rooms,
-          }),
-        });
-        const hotelData = await hotelResponse.json();
-        setHotelOptionsByCity(hotelData.cities?.map((c: { hotels: HotelType[] }) => c.hotels) || []);
-        setHotelCityLabels(hotelData.cities?.map((c: { city: string }) => c.city) || []);
-        setHotelNightsPerCity(cities.map((c) => {
-          const d1 = new Date(c.checkIn).getTime();
-          const d2 = new Date(c.checkOut).getTime();
-          return Math.round((d2 - d1) / 86400000);
-        }));
-        setHotelSource(hotelData.source || "estimated");
-        setHotelLoading(false);
-      } else {
-        // International: Fetch flights first
-        setFlightLoading(true);
-        setAppState("flight-selection");
-
-        const arrivalCity = preferredArrivalCity || plan.cities[0]?.city || userInput.destination;
-        const flightResponse = await fetch("/api/flights/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            origin: userInput.origin,
-            destination: arrivalCity,
-            departDate,
-            returnDate,
-            adults: userInput.adults,
-          }),
-        });
-        const flightData = await flightResponse.json();
-        setFlightOutbound(flightData.outbound || []);
-        setFlightInbound(flightData.inbound || []);
-        setFlightSource(flightData.source || "estimated");
-        setFlightLoading(false);
-      }
-
-      // Also generate legacy tripData for dashboard compatibility
+      // Step 3: Generate trip data and go to dashboard
+      let enhanced: TripData;
       if (isRegion(userInput.destination)) {
         const options = generateRouteOptions({
           origin: userInput.origin,
@@ -335,9 +275,19 @@ export default function ClientAppFlow() {
             },
             options[0]
           );
-          const enhanced = enhanceItineraryWithRestaurants(data, userInput.foodPreference);
-          setTripData(enhanced);
-          fetchRealItinerary(enhanced, userInput, plan);
+          enhanced = enhanceItineraryWithRestaurants(data, userInput.foodPreference);
+        } else {
+          const data = generateTripData({
+            origin: userInput.origin,
+            destination: userInput.destination,
+            startDate: userInput.startDate,
+            duration: userInput.duration,
+            adults: userInput.adults,
+            children: userInput.children,
+            rooms: userInput.rooms,
+            budget: userInput.budget,
+          });
+          enhanced = enhanceItineraryWithRestaurants(data, userInput.foodPreference);
         }
       } else {
         const data = generateTripData({
@@ -350,13 +300,98 @@ export default function ClientAppFlow() {
           rooms: userInput.rooms,
           budget: userInput.budget,
         });
-        const enhanced = enhanceItineraryWithRestaurants(data, userInput.foodPreference);
-        setTripData(enhanced);
-        fetchRealItinerary(enhanced, userInput, plan);
+        enhanced = enhanceItineraryWithRestaurants(data, userInput.foodPreference);
       }
+
+      setTripData(enhanced);
+
+      // Auto-select flights from generated data so dashboard shows prices immediately
+      if (enhanced.flights?.outbound) setSelectedOutbound(enhanced.flights.outbound);
+      if (enhanced.flights?.inbound) setSelectedInbound(enhanced.flights.inbound);
+
+      // Go to dashboard
+      setAppState("dashboard");
+
+      // Background: fetch real LLM itinerary
+      fetchRealItinerary(enhanced, userInput, plan);
+
+      // Background: fetch real flight prices from SerpAPI and update selections
+      if (userInput.tripType !== "domestic") {
+        fetch("/api/flights/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            origin: userInput.origin,
+            destination: userInput.destination,
+            departDate,
+            returnDate,
+            adults: userInput.adults,
+          }),
+        })
+          .then((res) => res.json())
+          .then((flightData) => {
+            if (flightData.outbound?.length > 0) {
+              setFlightOutbound(flightData.outbound);
+              // Auto-select cheapest outbound
+              const cheapestOut = [...flightData.outbound].sort((a: Flight, b: Flight) => (a.price || Infinity) - (b.price || Infinity))[0];
+              if (cheapestOut && cheapestOut.price > 0) setSelectedOutbound(cheapestOut);
+            }
+            if (flightData.inbound?.length > 0) {
+              setFlightInbound(flightData.inbound);
+              // Auto-select cheapest inbound
+              const cheapestIn = [...flightData.inbound].sort((a: Flight, b: Flight) => (a.price || Infinity) - (b.price || Infinity))[0];
+              if (cheapestIn && cheapestIn.price > 0) setSelectedInbound(cheapestIn);
+            }
+          })
+          .catch((err) => console.error("[ClientAppFlow] Background flight search error:", err));
+      }
+
+      // Background: fetch real hotels and auto-select best value
+      const hotelCities = plan
+        ? plan.cities.map((c) => {
+            const startDate = new Date(userInput.startDate);
+            let dayOffset = 0;
+            for (const prev of plan.cities) {
+              if (prev.city === c.city) break;
+              dayOffset += prev.days;
+            }
+            const checkIn = new Date(startDate.getTime() + dayOffset * 86400000).toISOString().split("T")[0];
+            const checkOut = new Date(startDate.getTime() + (dayOffset + c.days) * 86400000).toISOString().split("T")[0];
+            return { city: c.city, checkIn, checkOut };
+          })
+        : [
+            {
+              city: userInput.destination,
+              checkIn: departDate,
+              checkOut: returnDate,
+            },
+          ];
+
+      fetch("/api/hotels/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cities: hotelCities, rooms: userInput.rooms, adults: userInput.adults }),
+      })
+        .then((res) => res.json())
+        .then((hotelData) => {
+          if (hotelData.cities) {
+            const hotelsByCity = (hotelData.cities || []).map(
+              (c: { hotels: HotelType[] }) => c.hotels
+            );
+            setHotelOptionsByCity(hotelsByCity);
+            setHotelCityLabels(hotelCities.map((c) => c.city));
+            setHotelNightsPerCity(
+              plan ? plan.cities.map((c) => c.days) : [userInput.duration]
+            );
+            // Auto-select first hotel per city
+            const autoSelected = hotelsByCity.map((hotels: HotelType[]) => hotels[0] || null);
+            setSelectedHotels(autoSelected);
+          }
+        })
+        .catch((err) => console.error("[ClientAppFlow] Background hotel search error:", err));
     } catch (error) {
       console.error("[Processing] Error:", error);
-      // Fallback to legacy flow
+      // Fallback to legacy flow — go directly to itinerary dashboard
       if (userInput) {
         const data = generateTripData({
           origin: userInput.origin,
@@ -369,11 +404,7 @@ export default function ClientAppFlow() {
           budget: userInput.budget,
         });
         setTripData(enhanceItineraryWithRestaurants(data, userInput.foodPreference));
-        setFlightOutbound(data.flightOptions?.outbound || [data.flights.outbound]);
-        setFlightInbound(data.flightOptions?.inbound || [data.flights.inbound]);
-        setFlightSource("estimated");
-        setFlightLoading(false);
-        setAppState("flight-selection");
+        setAppState("dashboard");
       }
     }
   }, [userInput, preferredArrivalCity]);
@@ -400,7 +431,7 @@ export default function ClientAppFlow() {
       if (useTripStore.getState().aiRoutePlan) {
         fetchRealItinerary(enhanced, userInput, useTripStore.getState().aiRoutePlan!);
       }
-      setAppState("flight-selection");
+      setAppState("dashboard");
     },
     [userInput]
   );
@@ -871,7 +902,7 @@ export default function ClientAppFlow() {
         )}
 
         {/* STATE 7: Summary & Checkout */}
-        {appState === "summary" && (userInput?.tripType === "domestic" || (selectedOutbound && selectedInbound)) && (
+        {appState === "summary" && (
           <motion.div
             key="summary"
             initial={{ opacity: 0 }}
@@ -903,7 +934,7 @@ export default function ClientAppFlow() {
         )}
 
         {/* STATE 8: Dashboard — Read-Only Trip Summary */}
-        {appState === "dashboard" && (userInput?.tripType === "domestic" || (selectedOutbound && selectedInbound)) && (
+        {appState === "dashboard" && (
           <motion.div
             key="dashboard"
             initial={{ opacity: 0 }}
@@ -1155,22 +1186,22 @@ export default function ClientAppFlow() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15">
                       <TrainFront className="h-4 w-4 text-sky-400" />
                     </div>
-                    <h2 className="text-sm font-bold text-white">Inter-City Transport</h2>
+                    <h2 className="text-sm font-bold text-text-primary">Inter-City Transport</h2>
                   </div>
                   <div className="p-5 space-y-3">
                     {aiRoutePlan.cities.filter(c => c.transportFromPrev).map((city, i) => (
-                      <div key={`transport-${i}`} className="flex items-center gap-3 rounded-xl border border-white/6 bg-white/3 px-4 py-3">
+                      <div key={`transport-${i}`} className="flex items-center gap-3 rounded-xl border border-border bg-gray-50 px-4 py-3">
                         <span className="text-lg">{city.transportFromPrev?.mode === "train" ? "🚄" : city.transportFromPrev?.mode === "bus" ? "🚌" : "✈️"}</span>
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-white">
+                          <p className="text-sm font-semibold text-text-primary">
                             {aiRoutePlan.cities[aiRoutePlan.cities.indexOf(city) - 1]?.city} → {city.city}
                           </p>
-                          <p className="text-[11px] text-white/30">
+                          <p className="text-[11px] text-text-muted">
                             {city.transportFromPrev?.operator} · {city.transportFromPrev?.duration}
                           </p>
                         </div>
                         {city.transportFromPrev?.estimatedCost && (
-                          <p className="text-sm font-bold text-white">
+                          <p className="text-sm font-bold text-text-primary">
                             {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(city.transportFromPrev.estimatedCost)}
                           </p>
                         )}
@@ -1194,7 +1225,7 @@ export default function ClientAppFlow() {
                     </div>
                     <div className="flex-1">
                       <h2 className="text-sm font-bold text-text-primary">Your Hotels</h2>
-                      <p className="text-xs text-white/30">
+                      <p className="text-xs text-text-muted">
                         {selectedHotels.length} {selectedHotels.length === 1 ? "hotel" : "hotels"} · {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedHotels.reduce((s, h) => s + (h?.totalPrice ?? 0), 0))}
                       </p>
                     </div>
@@ -1204,23 +1235,23 @@ export default function ClientAppFlow() {
                       <div key={hotel.id} className="flex items-center gap-4 rounded-xl border border-border bg-gray-50 p-4">
                         <img src={hotel.image} alt={hotel.name} className="h-16 w-16 rounded-lg object-cover" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{hotel.name}</p>
-                          <div className="flex items-center gap-2 mt-1 text-[10px] text-white/30">
+                          <p className="text-sm font-bold text-text-primary truncate">{hotel.name}</p>
+                          <div className="flex items-center gap-2 mt-1 text-[10px] text-text-muted">
                             {hotelCityLabels[i] && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" />{hotelCityLabels[i]}</span>}
                             <span>{"★".repeat(hotel.stars || 0)} {hotel.rating?.toFixed(1)}</span>
                             <span>{hotel.nights} nights</span>
                           </div>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {hotel.amenities?.slice(0, 4).map((a: string) => (
-                              <span key={a} className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] text-white/25">{a}</span>
+                              <span key={a} className="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] text-text-muted">{a}</span>
                             ))}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-white">
+                          <p className="text-sm font-bold text-text-primary">
                             {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(hotel.totalPrice)}
                           </p>
-                          <p className="text-[10px] text-white/25">
+                          <p className="text-[10px] text-text-muted">
                             {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(hotel.pricePerNight)}/night
                           </p>
                         </div>
@@ -1233,7 +1264,7 @@ export default function ClientAppFlow() {
                         { name: "MakeMyTrip", url: `https://www.makemytrip.com/hotels/hotel-listing/?txtKeyword=${encodeURIComponent(selectedHotels[0].name)}` },
                       ].map((agg) => (
                         <a key={agg.name} href={agg.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-xs font-semibold text-purple-300 hover:bg-purple-500/20 transition-colors">
+                          className="flex items-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors">
                           Book on {agg.name}
                           <ArrowRight className="h-3 w-3" />
                         </a>
@@ -1257,21 +1288,21 @@ export default function ClientAppFlow() {
                     </div>
                     <div className="flex-1">
                       <h2 className="text-sm font-bold text-text-primary">Your Activities</h2>
-                      <p className="text-xs text-white/30">
+                      <p className="text-xs text-text-muted">
                         {selectedActivities.length} experiences · {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedActivities.reduce((s, a) => s + a.price, 0))}
                       </p>
                     </div>
                   </div>
                   <div className="p-5 grid gap-3 sm:grid-cols-2">
                     {selectedActivities.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 rounded-xl border border-white/6 bg-white/3 p-3">
+                      <div key={activity.id} className="flex items-start gap-3 rounded-xl border border-border bg-gray-50 p-3">
                         {activity.image && <img src={activity.image} alt={activity.title} className="h-12 w-12 rounded-lg object-cover shrink-0" />}
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-white truncate">{activity.title}</p>
-                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/30">
+                          <p className="text-xs font-bold text-text-primary truncate">{activity.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-text-muted">
                             <span>{activity.duration}</span>
                             <span>★ {activity.rating.toFixed(1)}</span>
-                            <span className="font-semibold text-white/50">
+                            <span className="font-semibold text-text-secondary">
                               {activity.price > 0
                                 ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(activity.price)
                                 : "Free"}
@@ -1280,7 +1311,7 @@ export default function ClientAppFlow() {
                         </div>
                         {activity.bookingUrl && (
                           <a href={activity.bookingUrl} target="_blank" rel="noopener noreferrer"
-                            className="shrink-0 flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-[9px] font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors">
+                            className="shrink-0 flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-200 px-2 py-1 text-[9px] font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
                             Book <ArrowRight className="h-2.5 w-2.5" />
                           </a>
                         )}
@@ -1293,7 +1324,7 @@ export default function ClientAppFlow() {
                       { name: "GetYourGuide", url: `https://www.getyourguide.com/s/?q=${encodeURIComponent(userInput?.destination || "")}` },
                     ].map((agg) => (
                       <a key={agg.name} href={agg.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors">
+                        className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors">
                         Browse on {agg.name}
                         <ArrowRight className="h-3 w-3" />
                       </a>
@@ -1307,11 +1338,11 @@ export default function ClientAppFlow() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
-                className="rounded-2xl border border-white/8 bg-linear-to-br from-orange-500/5 to-amber-500/5 p-6"
+                className="rounded-2xl border border-border bg-gradient-to-br from-orange-50 to-amber-50 p-6"
               >
-                <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                <h2 className="text-sm font-bold text-text-primary mb-3 flex items-center gap-2">
                   🍽️ Estimated Daily Meal Costs
-                  <span className="text-[10px] font-normal text-white/30 bg-white/5 rounded px-2 py-0.5">For reference only — not included in total</span>
+                  <span className="text-[10px] font-normal text-text-muted bg-gray-100 rounded px-2 py-0.5">For reference only — not included in total</span>
                 </h2>
                 <div className="grid grid-cols-3 gap-4">
                   {[
@@ -1321,12 +1352,12 @@ export default function ClientAppFlow() {
                   ].map((m) => (
                     <div key={m.meal} className="text-center">
                       <p className="text-lg">{m.emoji}</p>
-                      <p className="text-xs font-semibold text-white/60">{m.meal}</p>
-                      <p className="text-[11px] text-white/30">{m.range}/person</p>
+                      <p className="text-xs font-semibold text-text-secondary">{m.meal}</p>
+                      <p className="text-[11px] text-text-muted">{m.range}/person</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/20 mt-3 text-center">
+                <p className="text-[10px] text-text-muted mt-3 text-center">
                   Ranges vary by city and restaurant type. Street food is cheapest, fine dining at the top end.
                 </p>
               </motion.section>
@@ -1336,36 +1367,36 @@ export default function ClientAppFlow() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="rounded-2xl border border-white/8 bg-linear-to-br from-indigo-500/8 to-purple-500/5 p-6"
+                className="rounded-2xl border border-border bg-gradient-to-br from-indigo-50 to-purple-50 p-6"
               >
-                <h2 className="text-sm font-bold text-white mb-4">Price Breakdown</h2>
+                <h2 className="text-sm font-bold text-text-primary mb-4">Price Breakdown</h2>
                 <div className="space-y-3">
                   {userInput?.tripType !== "domestic" && selectedOutbound && selectedInbound && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/50 flex items-center gap-2"><Plane className="h-3.5 w-3.5 text-indigo-400" />Flights (2)</span>
-                      <span className="font-semibold text-white">{selectedFlightTotalLabel}</span>
+                      <span className="text-text-secondary flex items-center gap-2"><Plane className="h-3.5 w-3.5 text-indigo-400" />Flights (2)</span>
+                      <span className="font-semibold text-text-primary">{selectedFlightTotalLabel}</span>
                     </div>
                   )}
                   {selectedHotels.length > 0 && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/50 flex items-center gap-2"><BedDouble className="h-3.5 w-3.5 text-purple-400" />Hotels ({selectedHotels.length})</span>
-                      <span className="font-semibold text-white">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedHotels.reduce((s, h) => s + (h?.totalPrice ?? 0), 0))}</span>
+                      <span className="text-text-secondary flex items-center gap-2"><BedDouble className="h-3.5 w-3.5 text-purple-400" />Hotels ({selectedHotels.length})</span>
+                      <span className="font-semibold text-text-primary">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedHotels.reduce((s, h) => s + (h?.totalPrice ?? 0), 0))}</span>
                     </div>
                   )}
                   {selectedActivities.length > 0 && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/50 flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-amber-400" />Activities ({selectedActivities.length})</span>
-                      <span className="font-semibold text-white">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedActivities.reduce((s, a) => s + a.price, 0))}</span>
+                      <span className="text-text-secondary flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-amber-400" />Activities ({selectedActivities.length})</span>
+                      <span className="font-semibold text-text-primary">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(selectedActivities.reduce((s, a) => s + a.price, 0))}</span>
                     </div>
                   )}
                   {aiRoutePlan && aiRoutePlan.cities.filter(c => c.transportFromPrev).length > 0 && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/50 flex items-center gap-2"><TrainFront className="h-3.5 w-3.5 text-sky-400" />Inter-city Transport</span>
-                      <span className="font-semibold text-white">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(aiRoutePlan.cities.reduce((s, c) => s + (c.transportFromPrev?.estimatedCost || 0), 0))}</span>
+                      <span className="text-text-secondary flex items-center gap-2"><TrainFront className="h-3.5 w-3.5 text-sky-400" />Inter-city Transport</span>
+                      <span className="font-semibold text-text-primary">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(aiRoutePlan.cities.reduce((s, c) => s + (c.transportFromPrev?.estimatedCost || 0), 0))}</span>
                     </div>
                   )}
-                  <div className="border-t border-white/10 pt-3 flex items-center justify-between">
-                    <span className="text-base font-bold text-white">Grand Total</span>
+                  <div className="border-t border-border pt-3 flex items-center justify-between">
+                    <span className="text-base font-bold text-text-primary">Grand Total</span>
                     <span className="text-2xl font-extrabold bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
                       {new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(
                         (userInput?.tripType !== "domestic" && selectedOutbound && selectedInbound ? selectedFlightTotal : 0) +

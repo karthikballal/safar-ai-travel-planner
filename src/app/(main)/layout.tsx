@@ -10,14 +10,13 @@ import {
   Menu,
   X,
   Info,
-  ChevronDown,
-  Phone,
   Star,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import SafarLogo from "@/components/SafarLogo";
 import { useAuth, getInitials } from "@/lib/auth";
 import { AuthProvider } from "@/lib/auth";
+import SmoothScroll from "@/components/SmoothScroll";
 
 function NavBar() {
   const pathname = usePathname();
@@ -43,14 +42,19 @@ function NavBar() {
 
   const isHome = pathname === "/";
 
+  // Unified light navbar — transparent on home (blends with light hero), solid on scroll/other pages
+  const navBg = scrolled
+    ? "border-b border-border bg-white/90 backdrop-blur-xl shadow-sm"
+    : isHome
+      ? "bg-transparent border-b border-transparent"
+      : "border-b border-border bg-white/90 backdrop-blur-xl shadow-sm";
+
+  const textColor = "text-text-secondary hover:text-text-primary";
+  const activeColor = "text-primary-700";
+  const hamburgerColor = "text-text-primary";
+
   return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled || !isHome
-          ? "border-b border-border bg-white/95 backdrop-blur-xl shadow-sm"
-          : "bg-transparent"
-      }`}
-    >
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${navBg}`}>
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -59,14 +63,12 @@ function NavBar() {
 
         {/* Desktop nav — center */}
         <nav className="hidden items-center gap-1 md:flex">
-          {navLinks.map(({ href, label, icon: Icon }) => (
+          {navLinks.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
               className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-                pathname === href
-                  ? "text-primary-700"
-                  : "text-text-secondary hover:text-text-primary"
+                pathname === href ? activeColor : textColor
               }`}
             >
               {label}
@@ -80,11 +82,7 @@ function NavBar() {
           <div className="mr-2 hidden items-center gap-1 lg:flex">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  size={12}
-                  className="fill-amber-400 text-amber-400"
-                />
+                <Star key={i} size={12} className="fill-amber-400 text-amber-400" />
               ))}
             </div>
             <span className="text-xs font-semibold text-text-secondary">
@@ -107,7 +105,7 @@ function NavBar() {
           ) : (
             <Link
               href="/plan"
-              className="rounded-full bg-primary-500 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary-600 hover:shadow-md"
+              className="rounded-full bg-primary-500 px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary-600 hover:shadow-md hover:shadow-primary-500/20"
             >
               Start Planning — Free
             </Link>
@@ -116,7 +114,7 @@ function NavBar() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden"
+          className={`md:hidden ${hamburgerColor}`}
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label="Toggle navigation"
         >
@@ -172,32 +170,17 @@ function FooterBar() {
   if (pathname === "/plan") return null;
 
   const destinations = [
-    "Goa",
-    "Bali",
-    "Dubai",
-    "Thailand",
-    "Maldives",
-    "Kerala",
-    "Manali",
-    "Japan",
-    "Vietnam",
-    "Sri Lanka",
-    "Singapore",
-    "Europe",
+    "Goa", "Bali", "Dubai", "Thailand", "Maldives", "Kerala",
+    "Manali", "Japan", "Vietnam", "Sri Lanka", "Singapore", "Europe",
   ];
 
   const themes = [
-    "Honeymoon Packages",
-    "Family Holidays",
-    "Adventure Trips",
-    "Beach Getaways",
-    "Budget Trips",
-    "Luxury Holidays",
+    "Honeymoon Packages", "Family Holidays", "Adventure Trips",
+    "Beach Getaways", "Budget Trips", "Luxury Holidays",
   ];
 
   return (
     <footer className="border-t border-border bg-gray-50">
-      {/* Main footer */}
       <div className="mx-auto max-w-[1280px] px-4 py-12 sm:px-6">
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
@@ -209,11 +192,7 @@ function FooterBar() {
             </p>
             <div className="mt-4 flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  size={14}
-                  className="fill-amber-400 text-amber-400"
-                />
+                <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
               ))}
               <span className="ml-1 text-xs font-semibold text-text-secondary">
                 4.8/5 rating
@@ -223,9 +202,7 @@ function FooterBar() {
 
           {/* Destinations */}
           <div>
-            <h4 className="mb-3 text-sm font-bold text-text-primary">
-              Popular Destinations
-            </h4>
+            <h4 className="mb-3 text-sm font-bold text-text-primary">Popular Destinations</h4>
             <div className="grid grid-cols-2 gap-1">
               {destinations.map((d) => (
                 <Link
@@ -241,9 +218,7 @@ function FooterBar() {
 
           {/* Themes */}
           <div>
-            <h4 className="mb-3 text-sm font-bold text-text-primary">
-              Holiday Themes
-            </h4>
+            <h4 className="mb-3 text-sm font-bold text-text-primary">Holiday Themes</h4>
             <div className="space-y-1">
               {themes.map((t) => (
                 <Link
@@ -259,34 +234,12 @@ function FooterBar() {
 
           {/* Company */}
           <div>
-            <h4 className="mb-3 text-sm font-bold text-text-primary">
-              Company
-            </h4>
+            <h4 className="mb-3 text-sm font-bold text-text-primary">Company</h4>
             <div className="space-y-1">
-              <Link
-                href="/about"
-                className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5"
-              >
-                About Us
-              </Link>
-              <Link
-                href="/blog"
-                className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5"
-              >
-                Blog
-              </Link>
-              <Link
-                href="/privacy"
-                className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5"
-              >
-                Privacy Policy
-              </Link>
-              <Link
-                href="/terms"
-                className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5"
-              >
-                Terms of Service
-              </Link>
+              <Link href="/about" className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5">About Us</Link>
+              <Link href="/blog" className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5">Blog</Link>
+              <Link href="/privacy" className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5">Privacy Policy</Link>
+              <Link href="/terms" className="block text-sm text-text-secondary hover:text-primary-600 transition-colors py-0.5">Terms of Service</Link>
             </div>
           </div>
         </div>
@@ -296,27 +249,23 @@ function FooterBar() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-[1280px] flex-col items-center justify-between gap-2 px-4 py-4 text-xs text-text-muted sm:flex-row sm:px-6">
           <p>&copy; {new Date().getFullYear()} Safar AI. All rights reserved.</p>
-          <p>
-            Made with ❤️ for Indian travelers
-          </p>
+          <p>Made with ❤️ for Indian travelers</p>
         </div>
       </div>
     </footer>
   );
 }
 
-export default function MainLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen flex-col">
-        <NavBar />
-        <main className="flex-1">{children}</main>
-        <FooterBar />
-      </div>
+      <SmoothScroll>
+        <div className="flex min-h-screen flex-col">
+          <NavBar />
+          <main className="flex-1 pt-16">{children}</main>
+          <FooterBar />
+        </div>
+      </SmoothScroll>
     </AuthProvider>
   );
 }

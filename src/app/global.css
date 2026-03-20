@@ -26,6 +26,13 @@
   --color-text-primary: #1a1a1a;
   --color-text-secondary: #4b5563;
   --color-text-muted: #9ca3af;
+
+  /* ─── Apple-inspired Dark Section Tokens ────────────────────────────── */
+  --color-dark-bg: #0a0f1a;
+  --color-dark-surface: #111827;
+  --color-dark-border: rgba(255, 255, 255, 0.08);
+  --color-dark-text: #f5f5f7;
+  --color-dark-text-secondary: #86868b;
 }
 
 * {
@@ -73,6 +80,65 @@ body {
 .glass-card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
   border-color: #d1d5db;
+}
+
+/* ─── Apple-style Glass Effects ────────────────────────────────────────── */
+
+.glass-dark {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.glass-dark:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+}
+
+/* ─── Bento Cards (Apple-style asymmetric grid) ────────────────────────── */
+
+.bento-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+.bento-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-2px);
+}
+
+.bento-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(0, 198, 132, 0.06),
+    transparent 40%
+  );
+}
+
+.bento-card:hover::before {
+  opacity: 1;
 }
 
 /* ─── Buttons — PickYourTrail green CTA ──────────────────────────────── */
@@ -131,32 +197,32 @@ body {
 .dest-card {
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
-  aspect-ratio: 270 / 370;
+  border-radius: 16px;
+  aspect-ratio: 3 / 4;
   cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
 }
 
 .dest-card:hover {
-  transform: scale(1.02);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  transform: scale(1.03);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
 .dest-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dest-card:hover img {
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 
 .dest-card .overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.1) 50%, transparent 100%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.15) 50%, transparent 100%);
 }
 
 /* ─── Badge System (PYT color-coded tags) ────────────────────────────── */
@@ -178,6 +244,15 @@ body {
 .badge-budget { background: #E3F2FD; color: #1565C0; }
 .badge-season { background: #F3E5F5; color: #7B1FA2; }
 .badge-new { background: #E0F7FA; color: #00695C; }
+
+/* Glass badge variant (for dark sections) */
+.badge-glass {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
 
 /* ─── Ambient background (light version) ──────────────────────────────── */
 
@@ -343,6 +418,50 @@ input[type="range"]::-webkit-slider-thumb {
   background: linear-gradient(135deg, #e6f9f1 0%, #ffffff 40%, #fef3c7 100%);
 }
 
+/* ─── Dark Hero (Apple-style cinematic) ────────────────────────────────── */
+
+.hero-dark {
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 30%,
+    rgba(0, 198, 132, 0.08) 0%,
+    #0a0f1a 60%,
+    #000000 100%
+  );
+}
+
+/* ─── Gradient text utility ────────────────────────────────────────────── */
+
+.text-gradient {
+  background: linear-gradient(135deg, #00C684 0%, #34d399 50%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Animated counter (stats) ─────────────────────────────────────────── */
+
+.stat-value {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+/* ─── Estimated price badge ────────────────────────────────────────────── */
+
+.badge-estimated {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+  letter-spacing: 0.02em;
+}
+
 /* ─── Animations ───────────────────────────────────────────────────────── */
 
 @keyframes fadeInUp {
@@ -361,4 +480,41 @@ input[type="range"]::-webkit-slider-thumb {
 
 .slide-in {
   animation: slideIn 0.4s ease forwards;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes scroll-indicator {
+  0% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.5; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-scroll-indicator {
+  animation: scroll-indicator 2s ease-in-out infinite;
+}
+
+/* ─── Testimonial rotation ─────────────────────────────────────────────── */
+
+@keyframes testimonial-fade {
+  0%, 90% { opacity: 1; }
+  95%, 100% { opacity: 0; }
+}
+
+/* ─── Horizontal scroll snap ───────────────────────────────────────────── */
+
+.snap-x-mandatory {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.snap-center {
+  scroll-snap-align: center;
 }

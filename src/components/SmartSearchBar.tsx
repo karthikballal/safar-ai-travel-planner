@@ -122,11 +122,7 @@ export default function SmartSearchBar() {
       <div className="relative">
         <div className="flex items-center gap-3 rounded-full border border-border bg-white px-5 py-3 shadow-lg shadow-black/5 transition-all focus-within:border-primary-400 focus-within:shadow-xl focus-within:shadow-primary-500/10">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500">
-            {loading ? (
-              <Loader2 size={18} className="animate-spin text-white" />
-            ) : (
-              <Search size={18} className="text-white" />
-            )}
+            <Search size={18} className="text-white" />
           </div>
           <input
             ref={inputRef}
@@ -169,7 +165,7 @@ export default function SmartSearchBar() {
               <button
                 key={s}
                 onClick={() => handleSuggestionClick(s)}
-                className="rounded-full border border-border bg-white px-4 py-2 text-xs font-medium text-text-secondary transition-all hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
+                className="rounded-full border border-border bg-white px-4 py-2 text-xs font-medium text-text-secondary shadow-sm transition-all hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700"
               >
                 <Search size={10} className="mr-1.5 inline" />
                 {s}

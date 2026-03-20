@@ -7,10 +7,8 @@ import type { AppState } from "@/store/useTripStore";
 
 const WIZARD_STEPS: Step[] = [
   { id: "input", label: "Trip Details" },
-  { id: "flights", label: "Flights" },
-  { id: "hotels", label: "Hotels" },
-  { id: "activities", label: "Activities" },
-  { id: "summary", label: "Summary" },
+  { id: "processing", label: "AI Planning" },
+  { id: "itinerary", label: "Your Itinerary" },
 ];
 
 /** Map Zustand appState values to wizard step IDs */
@@ -18,21 +16,19 @@ function mapAppStateToStep(appState: AppState): string {
   switch (appState) {
     case "auth":
     case "input":
-    case "processing":
     case "arrival-city-picker":
     case "country-city-picker":
     case "region-country-picker":
     case "route-selection":
       return "input";
+    case "processing":
+      return "processing";
     case "flight-selection":
-      return "flights";
     case "hotel-selection":
-      return "hotels";
     case "activities-selection":
-      return "activities";
     case "summary":
     case "dashboard":
-      return "summary";
+      return "itinerary";
     default:
       return "input";
   }
